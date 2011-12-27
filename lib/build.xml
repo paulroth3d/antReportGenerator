@@ -1,0 +1,55 @@
+<?xml version='1.0'?>
+<project name="fix salesforce jar" default="fixSalesforceJar" basedir=".">
+	
+	<property environment="env" />
+	
+	<description>
+Overview:
+This task 'fixes' ant-salesforce.jar inline so it plays nicer with ant.
+
+If you get the error similar to:
+'failed to create task or type 'antlib:com.salesforce:deploy'
+
+then simply run the following in this directory
+$>ant
+
+###
+
+Since this application uses a 'FIXED' ant-salesforce.jar, it will someday be
+out of date and need to be replaced with a new version.
+
+By placing in a new ant-salesforce.jar file, this package 'fixes' it by adding
+in a salesforce.properties file (which allows ant to work without either
+installing the jar or linking the library with -lib)
+	</description>
+
+	<target name="fixSalesforceJar">
+		<property name="jar" value="ant-salesforce.jar" />
+		<property name="fixedJar" value="ant-salesforce.jar" />
+		<property name="jarDir" value="salesforceJar" />
+		
+		<echo>NOTE: Unpacking ${jar}</echo>
+		<unjar src="${jar}" dest="${jarDir}" />
+		
+		<echo>NOTE: Adding the appropriate properties file</echo>
+		<echo file="${jarDir}/com/salesforce/sforce_ant.properties">
+compileAndTest=com.salesforce.ant.CompileAndTest
+deploy=com.salesforce.ant.DeployTask
+retrieve=com.salesforce.ant.RetrieveTask
+bulkRetrieve=com.salesforce.ant.BulkRetrieveTask
+listMetadata=com.salesforce.ant.ListMetadataTask
+describeMetadata=com.salesforce.ant.DescribeMetadataTask</echo>
+		
+		<echo>NOTE: Packing it back up</echo>
+		<jar
+			destfile="${fixedJar}"
+			basedir="${jarDir}"
+			/>
+			
+		<delete dir="${jarDir}" />
+		
+		<echo>
+#	#	#	#	#
+properties file has now been added to ${jar}</echo>
+	</target>
+</project>

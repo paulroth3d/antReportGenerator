@@ -1,0 +1,134 @@
+<?xml version='1.0'?>
+<project name="TranformXml" default="doc"
+	xmlns:sf="http://com.salesforce"
+	basedir="."
+>
+	<!--
+	Defines task extensions for additional functionality in the ant scripts
+	antcontrib: provides additional logic and file handling capabilities
+	salesforce: provides salesforce integration
+	
+	notice the URI matching the xmlns defined above
+	-->
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+		<classpath>
+			<pathelement location="lib/ant-contrib-1.0b3.jar" />
+		</classpath>
+	</taskdef>
+	
+	<taskdef resource="com/salesforce/sforce_ant.properties" uri="http://com.salesforce">
+		<classpath>
+			<pathelement location="lib/ant-salesforce.jar" />
+		</classpath>
+	</taskdef>
+	
+	<!-- setup the environment with the env prefix -->
+	<property environment="env" />
+	
+	<!-- load the build properties from the build.environment file -->
+	<property file="build.environment" />
+	
+	<!-- default values if not specified in the build.environment file -->
+	<property name="package.dir" value="package" />
+	<property name="package.template" value="${package.dir}/package.template.xml" />
+	<property name="package.filename" value="package.xml" />
+	<property name="retrieve.dir" value="retrieved" />
+	
+	<property name="package.path" value="${package.dir}/${package.filename}" />
+	
+		<!-- create the retrieve directory to load files into -->
+	<mkdir dir="${retrieve.dir}" />
+	
+	<!-- assert the package file exists, otherwise tell them to be created -->
+	<available file="${package.path}" type="file" property="package.found" />
+	<if>
+		<equals arg1="${package.found}" arg2="$${package.found}" />
+		<then>
+			<echo>
+#	#	#	#	#	#	#
+Package file was not found at: ${package.path}
+
+Attempting to copy ${package.template} now:</echo>
+			
+			<copy file="${package.template}" tofile="${package.path}" />
+			
+			<echo>
+
+Success.
+Copied ${package.template} to ${package.path}
+
+Environment should be setup now</echo>
+		</then>
+	</if>
+	
+	
+	<!--
+	#	#	#	#	#	#	#	#	#	
+	Start of targets
+	#	#	#	#	#	#	#	#	#
+	-->
+	
+	<target name="help" description="Help">
+		<echo>Basic ant project to print a retrieve to documentation</echo>
+		
+		<antcall target="listTargets" inheritall="true" />
+		<antcall target="prop" inheritall="true" />
+	</target>
+	
+	
+	
+	
+	
+	<target name="prop" description="Lists the current property values">
+		<echo>
+sf.username:  ${sf.username}
+sf.serverurl: ${sf.serverurl}
+		</echo>
+	</target>
+	
+	
+	
+	
+	<target name="listTargets" description="Lists the targets available">
+		<echo>
+help      - lists help
+retrieve  - retrieves the objects specified in the package file
+transform - transforms the objects and profiles to documentation files
+		</echo>
+	</target>
+	
+	
+	
+	
+	
+	
+	<target name="retrieve" description="Retrieves the objects specified in the package file">
+		<echo>
+Retriving Package now...</echo>
+		
+		<sf:retrieve username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}"
+			retrieveTarget="${retrieve.dir}" unpackaged="${package.path}"
+		/>
+		<echo>
+Done.
+
+Files successfully retrieved to ${retrieve.dir}</echo>
+	</target>
+	
+	
+	
+	
+	<target name="TransformFile">
+		<!-- Transform one file into an HTML file -->
+		<xslt in="student_directory.xml" out="student.html"
+			style="student_html.xsl"
+		/>
+	</target>
+	<target name="TransformAll">
+		<!-- Transform all the files in the current directory -->
+		<xslt basedir="." destdir="."
+			includes="**/*.ext.xml"
+			style="student_html.xsl"
+		/>
+	</target>
+</project>

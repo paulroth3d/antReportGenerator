@@ -1,5 +1,5 @@
 <?xml version='1.0'?>
-<project name="TranformXml" default="doc"
+<project name="TranformXml" default="help"
 	xmlns:sf="http://com.salesforce"
 	basedir="."
 >
@@ -29,14 +29,22 @@
 	<property file="build.environment" />
 	
 	<!-- default values if not specified in the build.environment file -->
+	<property name="object.report" value="objectReport.xsl" />
+	<property name="profile.report" value="profileReport.xsl" />
 	<property name="package.dir" value="package" />
+	
 	<property name="package.template" value="${package.dir}/package.template.xml" />
 	<property name="package.filename" value="package.xml" />
 	<property name="retrieve.dir" value="retrieved" />
+	<property name="reports.dir" value="reports" />
+	<property name="doc.dir" value="docs" />
+	
+	<property name="abort.stop" value="Unable to continue" />
+	<property name="abort.user" value="Stopping due to user input" />
 	
 	<property name="package.path" value="${package.dir}/${package.filename}" />
 	
-		<!-- create the retrieve directory to load files into -->
+	<!-- create the retrieve directory to load files into -->
 	<mkdir dir="${retrieve.dir}" />
 	
 	<!-- assert the package file exists, otherwise tell them to be created -->
@@ -48,18 +56,40 @@
 #	#	#	#	#	#	#
 Package file was not found at: ${package.path}
 
-Attempting to copy ${package.template} now:</echo>
+Would you like to attempt to use the template?:</echo>
+
+			<input
+				addproperty="copyTemplate"
+				validargs="y,n"
+				defaultvalue="y"
+			/>
 			
-			<copy file="${package.template}" tofile="${package.path}" />
-			
-			<echo>
+			<if>
+				<equals arg1="${copyTemplate}" arg2="y" />
+				<then>
+					<copy file="${package.template}" tofile="${package.path}" />
+					
+					<echo>
 
 Success.
 Copied ${package.template} to ${package.path}
 
 Environment should be setup now</echo>
+				</then>
+				<else>
+					<echo>
+Please create a new package file at: ${package.path}</echo>
+					<fail>${abort.user}</fail>
+				</else>
+			</if>
 		</then>
 	</if>
+	
+	<!-- determine if the objects have been retrieved -->
+	<!-- to check if they exist, compare ${property} with $${property} -->
+	<available file="${retrieve.dir}" type="dir" property="retrieve.found" />
+	<available file="${retrieve.dir}/objects" type="dir" property="objects.found" />
+	<available file="${retrieve.dir}/profiles" type="dir" property="profiles.found" />
 	
 	
 	<!--
@@ -68,13 +98,30 @@ Environment should be setup now</echo>
 	#	#	#	#	#	#	#	#	#
 	-->
 	
+	<!-- HELP TARGETS -->
+	
 	<target name="help" description="Help">
-		<echo>Basic ant project to print a retrieve to documentation</echo>
+		<echo>
+#	#	#	#	#	#	#	#	#	#	#	#	#	#	
+Basic ant project to print a retrieve to documentation
+		
+For general information or list of current properties:
+	>ant
+	or
+	>ant help
+	
+To simply see the current settings, type
+	>ant prop
+	
+To run a specific target
+	$>ant [[TARGET]]
+	
+	such as
+	$>ant help</echo>
 		
 		<antcall target="listTargets" inheritall="true" />
-		<antcall target="prop" inheritall="true" />
+		<!-- <antcall target="prop" inheritall="true" /> -->
 	</target>
-	
 	
 	
 	
@@ -91,15 +138,46 @@ sf.serverurl: ${sf.serverurl}
 	
 	<target name="listTargets" description="Lists the targets available">
 		<echo>
-help      - lists help
+High level targets
+------------------
+help      - lists help, along with the current properties and available targets to call
 retrieve  - retrieves the objects specified in the package file
-transform - transforms the objects and profiles to documentation files
+clean     - cleans all files retrieved and generated documentation
+doc       - transforms the objects and profiles to documentation files
+
+
+cleaning targets
+----------------
+cleanDocs      - Cleans all documentation generated
+cleanRetrieved - Cleans all retrieved files
+clean          - Cleans both documentation and retrieved files
+
+documentation targets
+---------------------
+docObjects     - Runs documentation for all objects
+docProfiles    - Runs documentation for all profiles
+doc            - Runs documentation for everything
+
 		</echo>
 	</target>
 	
 	
+	<!-- CLEAN TARGETS -->
+	
+	<target name="cleanDocs">
+		<delete dir="${doc.dir}" />
+	</target>
+	<target name="cleanRetrieved">
+		<delete dir="${retrieve.dir}" />
+	</target>
+	<target name="clean">
+		<antcall target="cleanDocs" />
+		<antcall target="cleanRetrieved" />
+	</target>
 	
 	
+	
+	<!-- RETRIEVE TARGETS -->
 	
 	
 	<target name="retrieve" description="Retrieves the objects specified in the package file">
@@ -116,19 +194,105 @@ Files successfully retrieved to ${retrieve.dir}</echo>
 	</target>
 	
 	
+	<!-- CHECK TARGETS -->
 	
 	
-	<target name="TransformFile">
-		<!-- Transform one file into an HTML file -->
-		<xslt in="student_directory.xml" out="student.html"
-			style="student_html.xsl"
-		/>
+	<!--
+	/**
+	 *  Checks if the objects have been retrieved
+	 *  @VISIBILITY: INTERNAL
+	 **/
+	-->
+	<target name="checkRetrieved" description="">
+		<if>
+			<equals arg1="${retrieve.found}" arg2="$${retrieve.found}" />
+			<then>
+				<echo>
+No Files have been retrieved by
+>ant retrieve
+using ${package.path}</echo>
+				<fail>${abort.stop}</fail>
+			</then>
+		</if>
 	</target>
-	<target name="TransformAll">
-		<!-- Transform all the files in the current directory -->
-		<xslt basedir="." destdir="."
-			includes="**/*.ext.xml"
-			style="student_html.xsl"
-		/>
+	
+	
+	<!--
+	/**
+	 *  Checks if the profiles have been retrieved
+	 *  @VISIBILITY: INTERNAL
+	 **/
+	-->
+	<target name="checkProfiles" depends="checkRetrieved" >
+		<fail unless="${profiles.found}">
+Profiles were not retrieved.
+
+Please modify the package at: ${package.path}
+
+Then call
+>ant retrieve</fail>
 	</target>
+	
+	
+	<!--
+	/**
+	 *  Checks if the objects have been retrieved
+	 *  @VISIBILITY: INTERNAL
+	 **/
+	-->
+	<target name="checkObjects" depends="checkRetrieved" >
+		<fail unless="${objects.found}">
+Objects were not retrieved.
+
+Please modify the package at: ${package.path}
+
+Then call
+>ant retrieve</fail>
+	</target>
+	
+	
+	
+	<!-- DOCUMENTATION TARGETS -->
+	
+	
+	<!--
+	/**
+	 * Documents the objects
+	 **/
+	-->
+	<target name="docObjects" description="Run Documentation on objects" depends="checkProfiles,checkObjects" >
+		<xslt basedir="." destdir="${doc.dir}"
+			includes="${retrieve.dir}/objects/*.object"
+			style="${reports.dir}/${object.report}"
+		/>
+		
+		<echo>
+Done.
+Finished writing files out to ${doc.dir}</echo>
+	</target>
+	
+	<!--
+	/**
+	 * Documents the profiles
+	 **/
+	-->
+	<target name="docProfiles" description="Run Documentation on Profiles" depends="checkProfiles,checkObjects" >
+		<xslt basedir="." destdir="${doc.dir}"
+			includes="${retrieve.dir}/profiles/*.profile"
+			style="${reports.dir}/${profile.report}"
+		/>
+		
+		<echo>
+Done.
+Finished writing files out to ${doc.dir}</echo>
+	</target>
+	
+	
+	<!--
+	/** 
+     *  Documents everything
+     **/
+    -->
+    <target name="doc" description="Runs documentation on everything" depends="cleanDocs,docObjects,docProfiles">
+    </target>
 </project>

@@ -87,7 +87,7 @@ Please create a new package file at: ${package.path}</echo>
 	
 	<!-- determine if the objects have been retrieved -->
 	<!-- to check if they exist, compare ${property} with $${property} -->
-	<available file="${retrieve.dir}" type="dir" property="retrieve.found" />
+	<available file="${retrieve.dir}/package.xml" type="dir" property="retrieve.found" />
 	<available file="${retrieve.dir}/objects" type="dir" property="objects.found" />
 	<available file="${retrieve.dir}/profiles" type="dir" property="profiles.found" />
 	
@@ -187,9 +187,12 @@ Retriving Package now...</echo>
 		<sf:retrieve username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}"
 			retrieveTarget="${retrieve.dir}" unpackaged="${package.path}"
 		/>
+		
 		<echo>
 Done.
 
+[${profiles.found}]
+[${objects.found}]
 Files successfully retrieved to ${retrieve.dir}</echo>
 	</target>
 	
@@ -204,14 +207,23 @@ Files successfully retrieved to ${retrieve.dir}</echo>
 	 **/
 	-->
 	<target name="checkRetrieved" description="">
+		<var name="retrieve.found" unset="true" />
+		<available file="${retrieve.dir}/package.xml" type="dir" property="retrieve.found" />
+		
 		<if>
 			<equals arg1="${retrieve.found}" arg2="$${retrieve.found}" />
 			<then>
 				<echo>
 No Files have been retrieved by
 >ant retrieve
-using ${package.path}</echo>
-				<fail>${abort.stop}</fail>
+
+running now...
+
+If the retrieve times out,
+you can also call
+> ant retrieve -Dsf.asyncRequestId=requestId</echo>
+				
+				<antcall target='retrieve' inheritall='true' />
 			</then>
 		</if>
 	</target>
@@ -224,10 +236,13 @@ using ${package.path}</echo>
 	 **/
 	-->
 	<target name="checkProfiles" depends="checkRetrieved" >
+		<var name="profiles.found" unset="true" />
+		<available file="${retrieve.dir}/profiles" type="dir" property="profiles.found" />
+		
 		<fail unless="${profiles.found}">
 Profiles were not retrieved.
 
-Please modify the package at: ${package.path}
+Please modify the package at: ${package.path} if needed
 
 Then call
 >ant retrieve</fail>
@@ -241,10 +256,13 @@ Then call
 	 **/
 	-->
 	<target name="checkObjects" depends="checkRetrieved" >
+		<var name="objects.found" unset="true" />
+		<available file="${retrieve.dir}/objects" type="dir" property="objects.found" />
+		
 		<fail unless="${objects.found}">
 Objects were not retrieved.
 
-Please modify the package at: ${package.path}
+Please modify the package at: ${package.path} if needed
 
 Then call
 >ant retrieve</fail>
@@ -261,6 +279,7 @@ Then call
 	 **/
 	-->
 	<target name="docObjects" description="Run Documentation on objects" depends="checkProfiles,checkObjects" >
+		
 		<xslt basedir="." destdir="${doc.dir}"
 			includes="${retrieve.dir}/objects/*.object"
 			style="${reports.dir}/${object.report}"
@@ -268,7 +287,7 @@ Then call
 		
 		<echo>
 Done.
-Finished writing files out to ${doc.dir}</echo>
+Finished writing files out to ${doc.dir} folder</echo>
 	</target>
 	
 	<!--
@@ -284,7 +303,7 @@ Finished writing files out to ${doc.dir}</echo>
 		
 		<echo>
 Done.
-Finished writing files out to ${doc.dir}</echo>
+Finished writing files out to ${doc.dir} folder</echo>
 	</target>
 	
 	
